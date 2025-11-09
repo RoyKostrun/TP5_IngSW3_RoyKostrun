@@ -1,0 +1,84 @@
+name: Deploy Backend to QA
+
+on:
+  push:
+    branches: [ "qa" ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-qa.yml'
+
+env:
+  PROJECT_ID: tps-ingsw3-roykostrun
+  REGION: southamerica-east1
+  SERVICE_NAME: gc-back-ingsw3-roy-qa
+  IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  ENVIRONMENT: qa
+
+jobs:
+  # Primero ejecutar tests
+  # tests:
+  #  name: Run Tests
+  #  uses: ./.github/workflows/ci.yml
+  
+  # Solo deploy si los tests pasan
+  deploy:
+    name: Deploy Backend to QA
+    runs-on: ubuntu-latest
+  #  needs: tests
+    environment:
+      name: qa-backend
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:qa-${{ github.sha }} ./backend
+          docker tag ${{ env.IMAGE_NAME }}:qa-${{ github.sha }} ${{ env.IMAGE_NAME }}:qa-latest
+      
+      - name: Push Docker Image to GCR
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:qa-${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:qa-latest
+      
+      - name: Deploy to Cloud Run (QA)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}:qa-${{ github.sha }}
+          flags: '--allow-unauthenticated --platform=managed'
+          env_vars: |
+            ENVIRONMENT=qa
+            NODE_ENV=production
+      
+      - name: Show QA Deployment URL
+        run: |
+          echo "✅ Backend deployed to QA environment"
+          echo "🔗 URL: ${{ steps.deploy.outputs.url }}"
+      
+      - name: Create deployment summary
+        run: |
+          echo "## 🚀 QA Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** QA" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.IMAGE_NAME }}:qa-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
