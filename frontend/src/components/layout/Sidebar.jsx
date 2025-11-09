@@ -38,7 +38,7 @@ const CollectionItem = styled.li`
 export default function Sidebar({ collections, current, onSelect }) {
   return (
     <SidebarContainer>
-      <Title>Collections</Title>
+      <Title>Collections!!</Title>
       <CollectionList>
         {collections.map((c) => (
           <CollectionItem

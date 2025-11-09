@@ -44,6 +44,6 @@ def health_check():
         content={
             "status": 200,
             "message": "Server is up!",
-            "version": "v0.0.1"
+            "version": "v0.0.5"
         }
     )
