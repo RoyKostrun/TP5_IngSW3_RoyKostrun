@@ -1,4 +1,4 @@
-name: Deploy Backend to Cloud Run
+name: Deploy Backend to Production
 
 on:
   push:
@@ -12,11 +12,42 @@ env:
   REGION: southamerica-east1
   SERVICE_NAME: gc-back-ingsw3-roy
   IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  ENVIRONMENT: production
 
 jobs:
-  deploy:
-    name: Deploy Backend
+  # Validar que QA está OK antes de deployar a producción
+  validate-qa:
+    name: Validate QA Deployment
     runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check if QA deployment exists and is healthy
+        run: |
+          echo "⚠️ IMPORTANTE: Asegúrate de que el deployment en QA esté funcionando correctamente"
+          echo "Si QA tiene problemas, NO deberías mergear a main"
+          echo ""
+          echo "Verificaciones recomendadas:"
+          echo "- ✓ Tests pasaron en QA"
+          echo "- ✓ Aplicación funciona correctamente en QA"
+          echo "- ✓ No hay errores críticos en logs de QA"
+  
+  # Ejecutar tests completos
+  tests:
+    name: Run Tests
+    uses: ./.github/workflows/ci.yml
+    needs: validate-qa
+  
+  # Deploy a producción solo si todo está OK
+  deploy:
+    name: Deploy Backend to Production
+    runs-on: ubuntu-latest
+    needs: tests
+    environment:
+      name: production-backend
+      url: ${{ steps.deploy.outputs.url }}
     
     steps:
       - name: Checkout code
@@ -37,22 +68,49 @@ jobs:
       
       - name: Build Docker Image
         run: |
-          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} ./backend
-          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+          docker build -t ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ./backend
+          docker tag ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
       
       - name: Push Docker Image to GCR
         run: |
-          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
       
-      - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run (Production)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image: ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
           flags: '--allow-unauthenticated --platform=managed'
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
       
-      - name: Show Output
-        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
+      - name: Show Production Deployment URL
+        run: |
+          echo "✅ Backend deployed to PRODUCTION environment"
+          echo "🔗 URL: ${{ steps.deploy.outputs.url }}"
+          echo "⚠️  Monitor logs and metrics closely!"
+      
+      - name: Create deployment summary
+        run: |
+          echo "## 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check application health" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor error logs" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify critical functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor performance metrics" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Notify deployment
+        run: |
+          echo "🎉 Deployment to production completed successfully!"
+          echo "Remember to monitor the service for any issues."
