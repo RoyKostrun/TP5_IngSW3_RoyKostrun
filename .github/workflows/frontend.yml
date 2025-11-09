@@ -1,0 +1,62 @@
+name: Deploy Frontend to Cloud Run
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+
+env:
+  PROJECT_ID: tps-ingsw3-roykostrun
+  REGION: southamerica-east1
+  SERVICE: gc-front-ingsw3-roy
+  IMAGE: gcr.io/${{ env.PROJECT_ID }}/gc-front
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker auth for gcr.io
+        run: gcloud auth configure-docker gcr.io -q
+
+      - name: Build frontend image
+        working-directory: frontend
+        run: |
+          docker build \
+            -t ${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.IMAGE }}:latest \
+            .
+
+      - name: Push images
+        run: |
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run (frontend)
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --project ${{ env.PROJECT_ID }} \
+            --region ${{ env.REGION }} \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 80
+
