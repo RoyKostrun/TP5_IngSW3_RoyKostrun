@@ -10,53 +10,49 @@ on:
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
   REGION: southamerica-east1
-  SERVICE: gc-back-ingsw3-roy
-  IMAGE: gcr.io/${{ env.PROJECT_ID }}/gc-back
+  SERVICE_NAME: gc-back-ingsw3-roy
+  IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
 
 jobs:
-  build-and-deploy:
+  deploy:
+    name: Deploy Backend
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
+    
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
+      
+      - name: Google Auth
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Google Cloud SDK
+      
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} ./backend
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+      
+      - name: Push Docker Image to GCR
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:latest
+      
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Configure Docker auth for gcr.io
-        run: gcloud auth configure-docker gcr.io -q
-
-      - name: Build backend image
-        working-directory: backend
-        run: |
-          docker build \
-            -t ${{ env.IMAGE }}:${{ github.sha }} \
-            -t ${{ env.IMAGE }}:latest \
-            .
-
-      - name: Push images
-        run: |
-          docker push ${{ env.IMAGE }}:${{ github.sha }}
-          docker push ${{ env.IMAGE }}:latest
-
-      - name: Deploy to Cloud Run (backend)
-        run: |
-          gcloud run deploy ${{ env.SERVICE }} \
-            --project ${{ env.PROJECT_ID }} \
-            --region ${{ env.REGION }} \
-            --image ${{ env.IMAGE }}:${{ github.sha }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --port 8000
-
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          flags: '--allow-unauthenticated --platform=managed'
+      
+      - name: Show Output
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
