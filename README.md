@@ -90,12 +90,12 @@ docker run --rm -it -v ${PWD}/frontend:/app -w /app node:20 bash -lc "npm ci && 
 
 | Workflow | Rama | Jobs | Descripción |
 | -------- | ---- | ---- | ----------- |
-| `frontend-qa.yml` | `qa` | `tests` → `deploy` | Ejecuta `npm run test:ci`, sólo despliega si pasa. |
-| `backend-qa.yml`  | `qa` | `tests` → `deploy` | `pytest -q` con SQLite antes del deploy. |
-| `frontend.yml`    | `main` | `validate-qa`, `tests`, `deploy` | Produce resumen con URL productiva. |
-| `backend.yml`     | `main` | `validate-qa`, `tests`, `deploy` | Misma lógica para FastAPI. |
+| `frontend-qa.yml` | `qa` | `tests` → `deploy` | Ejecuta unit tests + coverage (se publica en el summary) y sube el lcov para Sonar. |
+| `backend-qa.yml`  | `qa` | `tests` → `sonar` → `deploy` | Pytest + coverage + análisis SonarCloud (quality gate). |
+| `frontend.yml`    | `main` | `validate-qa`, `tests`, `sonar`, `deploy` | Igual que QA pero contra main. |
+| `backend.yml`     | `main` | `validate-qa`, `tests`, `sonar`, `deploy` | Sólo se despliega si el quality gate pasa. |
 
-Un fallo en los tests cancela el job `deploy`, evitando subir código inestable a Cloud Run.
+Los jobs de `sonar` usan los reportes de coverage subidos como artefactos y validan el **quality gate** en SonarCloud. Si los tests o Sonar fallan, `deploy` no se ejecuta.
 
 ## Evidencias solicitadas
 

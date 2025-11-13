@@ -42,6 +42,12 @@
 - **Frontend**: `vitest --run --coverage` (scripts `npm run test:coverage`) con provider V8, reporters `text/html/lcov` y thresholds al 70 % para branches, functions, lines y statements (`vite.config.js`).  
 - Los workflows QA/Producción ejecutan primero los tests unitarios y sólo luego generan coverage; si alguno cae por debajo del umbral, el job falla y bloquea el deploy.
 
+## Análisis estático (SonarCloud)
+
+- Se configuró `sonar-project.properties` apuntando a `backend/app` y `frontend/src`, relacionando los reportes `backend/coverage.xml` y `frontend/coverage/lcov.info`.  
+- Los workflows `backend-qa.yml` y `backend.yml` incluyen un job `sonar` que descarga los artefactos de coverage, ejecuta `SonarSource/sonarcloud-github-action` con los secretos `SONAR_ORG`, `SONAR_PROJECT_KEY` y `SONAR_TOKEN`, y verifica el quality gate antes de permitir el deploy.  
+- Issues críticos detectados (code smells, duplicados, etc.) deben resolverse antes de la defensa; los dashboards de SonarCloud sirven como evidencia adjunta en la documentación.
+
 ## Integración con CI/CD
 
 - Los workflows `frontend-qa.yml`, `backend-qa.yml`, `frontend.yml` y `backend.yml` incluyen jobs `tests` obligatorios que ejecutan los comandos anteriores (`pytest -q` y `npm run test:ci`).  
