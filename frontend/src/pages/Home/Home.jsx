@@ -12,7 +12,7 @@ export default function Home() {
 
   const handleAddTask = async () => {
     const title = prompt("Enter task title:");
-    if (title) await addTodo(title);
+    if (title) await addTodo("FALLO"+title);
   };
 
   return (
@@ -38,7 +38,7 @@ export default function Home() {
                   readOnly
                 />
                 <div>
-                  <h3>{t.title}</h3>
+                  <h3>FALLO{t.title}</h3>
                   {t.completed && <Tag>done</Tag>}
                 </div>
                 <button

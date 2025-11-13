@@ -40,10 +40,10 @@ from fastapi.responses import JSONResponse
 @app.get("/health", tags=["Health Check"])
 def health_check():
     return JSONResponse(
-        status_code=200,
+        status_code=502,
         content={
-            "status": 200,
-            "message": "Server is up!",
-            "version": "v0.0.5"
+            "status": 502,
+            "message": "Server is up!FALLO",
+            "version": "FALLO v0.0.5"
         }
     )
