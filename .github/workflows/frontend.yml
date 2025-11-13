@@ -1,17 +1,17 @@
-name: Deploy Backend to Production
+name: Deploy Frontend to Production
 
 on:
   push:
     branches: [ "main" ]
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
 
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
   REGION: southamerica-east1
-  SERVICE_NAME: gc-back-ingsw3-roy
-  IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  SERVICE_NAME: gc-front-ingsw3-roy
+  IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
   ENVIRONMENT: production
 
 jobs:
@@ -35,18 +35,18 @@ jobs:
           echo "- ✓ No hay errores críticos en logs de QA"
   
   # Ejecutar tests completos
-  # tests:
-  #   name: Run Tests
-  #   uses: ./.github/workflows/ci.yml
-  #   needs: validate-qa
+  #tests:
+    #name: Run Tests
+    #uses: ./.github/workflows/ci.yml
+    #needs: validate-qa
   
   # Deploy a producción solo si todo está OK
   deploy:
-    name: Deploy Backend to Production
+    name: Deploy Frontend to Production
     runs-on: ubuntu-latest
-    # needs: tests
+    #needs: tests
     environment:
-      name: production-backend
+      name: production-frontend
       url: ${{ steps.deploy.outputs.url }}
     
     steps:
@@ -68,7 +68,7 @@ jobs:
       
       - name: Build Docker Image
         run: |
-          docker build -t ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ./backend
+          docker build -t ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ./frontend
           docker tag ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
       
       - name: Push Docker Image to GCR
@@ -90,7 +90,7 @@ jobs:
       
       - name: Show Production Deployment URL
         run: |
-          echo "✅ Backend deployed to PRODUCTION environment"
+          echo "✅ Frontend deployed to PRODUCTION environment"
           echo "🔗 URL: ${{ steps.deploy.outputs.url }}"
           echo "⚠️  Monitor logs and metrics closely!"
       
