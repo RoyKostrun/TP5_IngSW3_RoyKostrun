@@ -54,6 +54,14 @@ jobs:
         env:
           CI: true
         run: npm run test:coverage
+      - name: Append coverage summary
+        working-directory: frontend
+        run: |
+          node -e "const fs = require('fs'); const summary = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json','utf8')); const t = summary.total; const line = `Lines: ${t.lines.pct}% | Statements: ${t.statements.pct}% | Functions: ${t.functions.pct}% | Branches: ${t.branches.pct}%`; fs.writeFileSync('./coverage-summary.txt', line);"
+          echo "## Frontend Coverage (Production)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat coverage-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v4
         with:
