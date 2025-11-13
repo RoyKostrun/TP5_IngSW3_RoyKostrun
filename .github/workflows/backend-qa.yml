@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/backend-qa.yml'
+  workflow_dispatch:     
 
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
