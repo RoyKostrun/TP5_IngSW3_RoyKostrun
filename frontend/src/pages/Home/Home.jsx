@@ -41,7 +41,12 @@ export default function Home() {
                   <h3>{t.title}</h3>
                   {t.completed && <Tag>done</Tag>}
                 </div>
-                <button onClick={() => deleteTodo(t.id)}>❌</button>
+                <button
+                  aria-label={`Delete ${t.title}`}
+                  onClick={() => deleteTodo(t.id)}
+                >
+                  X
+                </button>
               </TaskCard>
             ))
           )}
