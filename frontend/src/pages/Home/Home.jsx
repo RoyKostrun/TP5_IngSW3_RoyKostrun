@@ -31,17 +31,18 @@ export default function Home() {
             <p>No tasks yet.</p>
           ) : (
             todos.map((t) => (
-              <TaskCard key={t.id}>
+              <TaskCard key={t.id} data-testid={`task-card-${t.id}`}>
                 <input
                   type="checkbox"
                   checked={t.completed}
                   readOnly
                 />
-                <div>
+                <div data-testid={`task-title-${t.id}`}>
                   <h3>{t.title}</h3>
                   {t.completed && <Tag>done</Tag>}
                 </div>
                 <button
+                  data-testid={`delete-button-${t.id}`}
                   aria-label={`Delete ${t.title}`}
                   onClick={() => deleteTodo(t.id)}
                 >
