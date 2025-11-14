@@ -15,65 +15,9 @@ env:
   ENVIRONMENT: production
 
 jobs:
-  # Validar que QA esta OK antes de deployar a produccion
-  validate-qa:
-    name: Validate QA Deployment
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Check if QA deployment exists and is healthy
-        run: |
-          echo "IMPORTANTE: asegurate de que QA este sano antes de mergear a main."
-          echo "- Tests pasaron en QA"
-          echo "- Aplicacion funciona correctamente en QA"
-          echo "- No hay errores criticos en logs"
-
-  tests:
-    name: Run Frontend Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-      - name: Run unit tests
-        working-directory: frontend
-        env:
-          CI: true
-        run: npm run test:unit
-      - name: Generate coverage report
-        working-directory: frontend
-        env:
-          CI: true
-        run: npm run test:coverage
-      - name: Append coverage summary
-        working-directory: frontend
-        run: |
-          node -e 'const fs = require("fs"); const summary = JSON.parse(fs.readFileSync("./coverage/coverage-summary.json","utf8")); const t = summary.total; const line = `Lines: ${t.lines.pct}% | Statements: ${t.statements.pct}% | Functions: ${t.functions.pct}% | Branches: ${t.branches.pct}%`; fs.writeFileSync("./coverage-summary.txt", line);'
-          echo "## Frontend Coverage (Production)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat coverage-summary.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-      - name: Upload frontend coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage-prod
-          path: frontend/coverage/lcov.info
-
   deploy:
     name: Deploy Frontend to Production
     runs-on: ubuntu-latest
-    needs:
-      - validate-qa
-      - tests
     environment:
       name: production-frontend
       url: ${{ steps.deploy.outputs.url }}
@@ -122,13 +66,3 @@ jobs:
           echo "- **Image:** ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Check application health" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Monitor error logs" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Verify critical functionality" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Monitor performance metrics" >> $GITHUB_STEP_SUMMARY
-      - name: Notify deployment
-        run: |
-          echo "Deployment to production completed successfully!"
-          echo "Remember to monitor the service for any issues."

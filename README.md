@@ -1,12 +1,12 @@
 # TP06 – Suite de Pruebas (Frontend + Backend)
 
-Aplicación TODO desarrollada en el TP05 y extendida en el TP06 con una estrategia de testing completa y gates en CI/CD.
+Aplicación TODO del TP05 extendida con una estrategia de calidad para TP06/TP07: unit tests, coverage, SonarCloud, Cypress e integración CI/CD con quality gates.
 
-- **Backend**: FastAPI + SQLAlchemy + PostgreSQL.
-- **Frontend**: React + Vite + styled-components.
-- **Infra**: Cloud Run (QA/Producción) + GitHub Actions.
+- **Backend**: FastAPI + SQLAlchemy + PostgreSQL  
+- **Frontend**: React + Vite + styled-components  
+- **Infra**: Cloud Run (QA / Producción) + GitHub Actions
 
-## Requisitos Previos
+## Requisitos
 
 | Componente | Versión recomendada |
 | ---------- | ------------------- |
@@ -21,14 +21,18 @@ Aplicación TODO desarrollada en el TP05 y extendida en el TP06 con una estrateg
 ```
 backend/
   app/
-  tests/                 # pytest
+  tests/
 frontend/
   src/hooks/useTodos.test.jsx
   src/pages/Home/Home.test.jsx
-.github/workflows/       # QA + Production con jobs de tests
+  cypress/e2e/test.cy.js
+.github/workflows/
+  backend-qa.yml / backend.yml
+  frontend-qa.yml / frontend.yml
+sonar-project.properties
 ```
 
-## Cómo ejecutar la app localmente
+## Ejecución local
 
 ### Backend
 ```bash
@@ -46,67 +50,60 @@ npm install
 npm run dev
 ```
 
-### Con Docker Compose
+### Docker Compose
 ```bash
 docker compose up --build
 ```
 
-## Cómo correr los tests (localmente)
-
-**Prerrequisitos**
-1. Instalar dependencias (`pip install -r backend/requirements.txt`, `npm install`).
-2. Usar Python 3.11 y Node 20 (igual que en CI).
-3. Definir `DATABASE_URL=sqlite:///./test.db` antes de ejecutar pytest.
+## Cómo correr los tests
 
 ### Backend
 ```bash
 cd backend
 export DATABASE_URL=sqlite:///./test.db
-pytest -q                                # pruebas unitarias
-pytest --cov=app --cov-report=xml \
-       --cov-report=term --cov-fail-under=70   # coverage
-```
-
-Reproducir el pipeline dentro de un contenedor:
-```bash
-docker compose run --rm backend bash -lc "export DATABASE_URL=sqlite:///./test.db && pytest -q"
-docker compose run --rm backend bash -lc "export DATABASE_URL=sqlite:///./test.db && pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=70"
+pytest -q
+pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=70
 ```
 
 ### Frontend
 ```bash
 cd frontend
-npm run test:unit                    # pruebas unitarias
-npm run test:coverage                # coverage (genera coverage/lcov.info)
+npm run test:unit
+npm run test:coverage
 ```
 
-Opcional en contenedor:
+### Cypress (integración)
 ```bash
-docker run --rm -it -v ${PWD}/frontend:/app -w /app node:20 bash -lc "npm ci && npm run test:unit"
-docker run --rm -it -v ${PWD}/frontend:/app -w /app node:20 bash -lc "npm ci && npm run test:coverage"
+cd frontend
+npm run cy:run
 ```
+Variables útiles:
+- `CYPRESS_frontUrl`: URL del frontend a testear (default: QA).
+- `CYPRESS_apiUrl`: backend que usa Cypress para crear/eliminar tareas.
 
-## CI/CD
+## CI/CD y Quality Gates
 
-| Workflow | Rama | Jobs | Descripción |
-| -------- | ---- | ---- | ----------- |
-| `frontend-qa.yml` | `qa` | `tests` → `deploy` | Ejecuta unit tests + coverage (se publica en el summary) y sube el lcov para Sonar. |
-| `backend-qa.yml`  | `qa` | `tests` → `sonar` → `deploy` | Pytest + coverage + análisis SonarCloud (quality gate). |
-| `frontend.yml`    | `main` | `validate-qa`, `tests`, `sonar`, `deploy` | Igual que QA pero contra main. |
-| `backend.yml`     | `main` | `validate-qa`, `tests`, `sonar`, `deploy` | Sólo se despliega si el quality gate pasa. |
+| Workflow | Rama | Jobs principales | Detalle |
+| -------- | ---- | ---------------- | ------- |
+| `frontend-qa.yml` | `qa` | `tests → deploy → cypress-e2e → quality-gate → approval` | Unit tests + coverage, despliegue en QA, Cypress sobre QA y aprobación manual para habilitar producción. |
+| `backend-qa.yml`  | `qa` | `tests → sonar → deploy → cypress-e2e` | Pytest + coverage ≥70 %, SonarCloud, deploy QA y Cypress E2E. |
+| `frontend.yml`    | `main` | `deploy` | Sólo build + deploy (los gates suceden en QA). |
+| `backend.yml`     | `main` | `validate-qa → tests → sonar → cypress-e2e → quality-gate → approval → deploy` | Ejecución completa antes de producción y aprobación manual (`production-approval`). |
 
-Los jobs de `sonar` usan los reportes de coverage subidos como artefactos y validan el **quality gate** en SonarCloud. Si los tests o Sonar fallan, `deploy` no se ejecuta.
+Quality gates:
+- Cobertura mínima 70 % (pytest/vitest con `--cov-fail-under=70`).
+- SonarCloud bloquea si hay issues críticos.
+- Cypress valida los flujos de creación/eliminación en QA; si falla, el pipeline se detiene.
+- Los jobs `approval` requieren confirmación manual antes del deploy productivo.
 
-## Evidencias solicitadas
+## Evidencias y documentación
 
-- Capturas de ejecución local de `pytest` y `npm run test:ci`.
-- Capturas de GitHub Actions donde se observan los jobs “Run Backend/Frontend Tests” antes del despliegue (ver imágenes adjuntas en la carpeta de evidencias o la pestaña *Actions*).
-- `decisiones.md` documenta frameworks, mocks, casos cubiertos y referencias a las capturas.
-
+- `decisiones.md`: frameworks elegidos, mocking, cobertura, SonarCloud y escenarios Cypress.
+- Capturas de `pytest`, `vitest`, `cypress run` y de la pestaña *Actions* (coverage summary, SonarCloud, Cypress/quality gate).
 
 ## Defensa oral
 
-1. Explicar la elección de frameworks (pytest + TestClient + SQLite / Vitest + RTL).  
-2. Mostrar cómo se mockean dependencias (`dependency_overrides` en FastAPI, `vi.mock` del cliente HTTP).  
-3. Enseñar cómo los pipelines bloquean el deploy si un test cae.  
-4. Respaldar con los comandos anteriores y capturas de Actions.
+1. Justificar las elecciones técnicas (pytest/TestClient/SQLite, Vitest/RTL, Cypress).  
+2. Explicar la estrategia de mocking (dependency_overrides, `vi.mock`, intercepts).  
+3. Mostrar cómo los pipelines bloquean despliegues (coverage, Sonar, Cypress, aprobación).  
+4. Ejecutar localmente los comandos anteriores y enseñar los reportes generados.
