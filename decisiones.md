@@ -36,6 +36,13 @@
 - Página `Home`: render de loading, empty state, lista de tareas, botón delete disparando el handler mockeado.  
 - Las pruebas siguen patrón AAA explícito y cubren flujos felices + edge cases pedidos en el TP.
 
+### Cypress (E2E)
+
+- `test.cy.js` contiene dos escenarios completos:
+  1. Creación y validación de un TODO desde la UI, interceptando el `POST /todos` y eliminando la tarea creada como limpieza.
+  2. Eliminación end-to-end: se crea un registro vía API, se refresca el frontend, se elimina desde el botón `X` y se valida la respuesta `DELETE`.
+- Los tests utilizan `CYPRESS_frontUrl` y `CYPRESS_apiUrl` para apuntar a QA o al entorno que se requiera. Se agrega una espera inicial para asegurarse de que el entorno remoto esté listo antes de interactuar.
+
 ## Cobertura de código
 
 - **Backend**: `pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=70`. El reporte `coverage.xml` se usa como insumo para quality gates y SonarCloud.  
