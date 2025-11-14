@@ -1,10 +1,10 @@
 # TP06 – Suite de Pruebas (Frontend + Backend)
 
-Aplicación TODO desarrollada en el TP05 y extendida para el TP06/TP07 con una estrategia de calidad completa (unit tests, coverage, SonarCloud, Cypress y CI/CD con quality gates).
+Aplicación TODO del TP05 extendida con una estrategia de calidad para TP06/TP07: unit tests, coverage, SonarCloud, Cypress e integración CI/CD con quality gates.
 
-- **Backend**: FastAPI + SQLAlchemy + PostgreSQL.
-- **Frontend**: React + Vite + styled-components.
-- **Infra**: Cloud Run (QA / Producción) + GitHub Actions.
+- **Backend**: FastAPI + SQLAlchemy + PostgreSQL  
+- **Frontend**: React + Vite + styled-components  
+- **Infra**: Cloud Run (QA / Producción) + GitHub Actions
 
 ## Requisitos
 
@@ -16,12 +16,12 @@ Aplicación TODO desarrollada en el TP05 y extendida para el TP06/TP07 con una e
 | Docker     | 24+                 |
 | gcloud CLI | 465+                |
 
-## Estructura relevante
+## Estructura
 
 ```
 backend/
-  app/           # Código FastAPI
-  tests/         # pytest + cobertura
+  app/
+  tests/
 frontend/
   src/hooks/useTodos.test.jsx
   src/pages/Home/Home.test.jsx
@@ -37,9 +37,9 @@ sonar-project.properties
 ### Backend
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-export DATABASE_URL=sqlite:///./local.db           # PowerShell: $env:DATABASE_URL='sqlite:///./local.db'
+export DATABASE_URL=sqlite:///./local.db            # PowerShell: $env:DATABASE_URL='sqlite:///./local.db'
 uvicorn app.main:app --reload
 ```
 
@@ -61,50 +61,49 @@ docker compose up --build
 ```bash
 cd backend
 export DATABASE_URL=sqlite:///./test.db
-pytest -q                                   # unit tests
-pytest --cov=app --cov-report=xml \
-       --cov-report=term --cov-fail-under=70
+pytest -q
+pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=70
 ```
 
-### Frontend (unitarios + coverage)
+### Frontend
 ```bash
 cd frontend
 npm run test:unit
 npm run test:coverage
 ```
 
-### Pruebas de integración (Cypress)
+### Cypress (integración)
 ```bash
 cd frontend
 npm run cy:run
 ```
 Variables útiles:
-- `CYPRESS_frontUrl`: URL del frontend bajo prueba (por defecto, QA).
-- `CYPRESS_apiUrl`: endpoint del backend que los tests usan para crear/eliminar tareas.
+- `CYPRESS_frontUrl`: URL del frontend a testear (default: QA).
+- `CYPRESS_apiUrl`: backend que usa Cypress para crear/eliminar tareas.
 
 ## CI/CD y Quality Gates
 
 | Workflow | Rama | Jobs principales | Detalle |
 | -------- | ---- | ---------------- | ------- |
-| `frontend-qa.yml` | `qa` | `tests → deploy` | Unit tests + coverage (artefactos para Sonar). |
-| `backend-qa.yml`  | `qa` | `tests → sonar → deploy → cypress-e2e` | Pytest + coverage ≥70%, SonarCloud, deploy QA y Cypress E2E sobre QA. |
-| `frontend.yml`    | `main` | `validate-qa → tests → sonar → deploy` | Repite validaciones sobre main. |
-| `backend.yml`     | `main` | `validate-qa → tests → sonar → cypress-e2e → quality-gate → approval → deploy` | Antes del deploy productivo se ejecutan unit tests, coverage, SonarCloud y Cypress. Luego se pide aprobación manual (`environment: production-approval`). |
+| `frontend-qa.yml` | `qa` | `tests → deploy → cypress-e2e → quality-gate → approval` | Unit tests + coverage, despliegue en QA, Cypress sobre QA y aprobación manual para habilitar producción. |
+| `backend-qa.yml`  | `qa` | `tests → sonar → deploy → cypress-e2e` | Pytest + coverage ≥70 %, SonarCloud, deploy QA y Cypress E2E. |
+| `frontend.yml`    | `main` | `deploy` | Sólo build + deploy (los gates suceden en QA). |
+| `backend.yml`     | `main` | `validate-qa → tests → sonar → cypress-e2e → quality-gate → approval → deploy` | Ejecución completa antes de producción y aprobación manual (`production-approval`). |
 
 Quality gates:
-- **Cobertura**: los comandos pytest/vitest usan `--cov-fail-under=70`.
-- **SonarCloud**: falla si el quality gate detecta issues críticos.
-- **Cypress**: corre sobre el entorno QA; si la integración front-back falla, no se avanza.
-- **Aprobación manual**: el job `approval` obliga a revisar el pipeline sólo cuando todas las verificaciones pasaron.
+- Cobertura mínima 70 % (pytest/vitest con `--cov-fail-under=70`).
+- SonarCloud bloquea si hay issues críticos.
+- Cypress valida los flujos de creación/eliminación en QA; si falla, el pipeline se detiene.
+- Los jobs `approval` requieren confirmación manual antes del deploy productivo.
 
 ## Evidencias y documentación
 
-- `decisiones.md` documenta frameworks, mocks, coverage, SonarCloud y los escenarios de Cypress (creación y eliminación de tareas + manejo de errores).  
-- Capturas de ejecución local y de GitHub Actions (coverage summary, SonarCloud, Cypress) se adjuntan en la carpeta de evidencias o pueden tomarse desde la pestaña *Actions*.
+- `decisiones.md`: frameworks elegidos, mocking, cobertura, SonarCloud y escenarios Cypress.
+- Capturas de `pytest`, `vitest`, `cypress run` y de la pestaña *Actions* (coverage summary, SonarCloud, Cypress/quality gate).
 
 ## Defensa oral
 
-1. Justificar la elección de frameworks (pytest + TestClient + SQLite, Vitest + RTL, Cypress).  
-2. Explicar cómo se mockean dependencias (override `get_db`, `vi.mock`, intercepts de Cypress).  
-3. Mostrar los quality gates en GitHub Actions / SonarCloud y cómo bloquean despliegues.  
-4. Ejecutar los comandos locales (pytest, vitest, cypress) y mostrar los reportes generados.
+1. Justificar las elecciones técnicas (pytest/TestClient/SQLite, Vitest/RTL, Cypress).  
+2. Explicar la estrategia de mocking (dependency_overrides, `vi.mock`, intercepts).  
+3. Mostrar cómo los pipelines bloquean despliegues (coverage, Sonar, Cypress, aprobación).  
+4. Ejecutar localmente los comandos anteriores y enseñar los reportes generados.
