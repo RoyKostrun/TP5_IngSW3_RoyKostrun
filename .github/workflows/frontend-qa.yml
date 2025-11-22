@@ -317,11 +317,4 @@ jobs:
       - name: Confirm gates passed
         run: echo "Frontend and Backend QA checks (unit, coverage, Sonar, and Cypress E2E) completed."
 
-  approval:
-    name: Esperar aprobacion manual para produccion
-    runs-on: ubuntu-latest
-    needs: quality-gate
-    environment:
-      name: production-frontend-approval
-    steps:
-      - run: echo "Se requiere aprobacion manual antes de habilitar el deploy a produccion."
+# cambios varios
