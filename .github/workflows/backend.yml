@@ -14,8 +14,7 @@ env:
   SERVICE_NAME: gc-back-ingsw3-roy
   IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
   ENVIRONMENT: production
-# comentario de prueba
-# otro comentario de prueba
+
 jobs:
   deploy:
     name: Deploy Backend to Production
