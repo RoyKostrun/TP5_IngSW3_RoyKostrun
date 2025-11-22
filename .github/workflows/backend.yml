@@ -191,7 +191,7 @@ jobs:
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
+          image: ${{ env.IMAGE_NAME }}:prod-latest
           flags: "--allow-unauthenticated --platform=managed"
           env_vars: |
             ENVIRONMENT=production
