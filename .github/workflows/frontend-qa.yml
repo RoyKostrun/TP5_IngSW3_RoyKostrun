@@ -9,7 +9,7 @@ on:
       - ".github/workflows/frontend-qa.yml"
 
   workflow_dispatch:
-# otro comentario de prueba
+
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
   REGION: southamerica-east1
