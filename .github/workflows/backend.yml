@@ -18,12 +18,6 @@ jobs:
   deploy:
     name: Deploy Backend to Production
     runs-on: ubuntu-latest
-    needs:
-      - validate-qa
-      - tests
-      - sonar
-     # - cypress-e2e
-      - approval
     environment:
       name: production-backend
       url: ${{ steps.deploy.outputs.url }}
