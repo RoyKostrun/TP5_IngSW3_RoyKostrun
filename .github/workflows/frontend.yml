@@ -33,21 +33,23 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
-      - name: Build Docker Image
+      - name: Pull QA image and retag for production
         run: |
-          docker build -t ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ./frontend
-          docker tag ${{ env.IMAGE_NAME }}:prod-${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
-      - name: Push Docker Image to GCR
+          docker pull ${{ env.IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.IMAGE_NAME }}:qa-latest ${{ env.IMAGE_NAME }}:latest
+          docker tag ${{ env.IMAGE_NAME }}:qa-latest ${{ env.IMAGE_NAME }}:prod-latest
+
+      - name: Push production tags to GCR
         run: |
-          docker push ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.IMAGE_NAME }}:prod-latest
       - name: Deploy to Cloud Run (Production)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}
+          image: ${{ env.IMAGE_NAME }}:prod-latest
           flags: "--allow-unauthenticated --platform=managed"
           env_vars: |
             ENVIRONMENT=production
