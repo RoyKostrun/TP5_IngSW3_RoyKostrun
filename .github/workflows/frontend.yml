@@ -12,7 +12,7 @@ env:
   SERVICE_NAME: gc-front-ingsw3-roy
   IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
   ENVIRONMENT: production
-
+#cambios varios
 jobs:
   deploy:
     name: Deploy Frontend to Production
