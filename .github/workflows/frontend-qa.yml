@@ -304,7 +304,7 @@ jobs:
       - name: Run Cypress tests
         uses: cypress-io/github-action@v6
         with:
-          command: npm run cy:run
+          command: npm cypress run
         env:
           CYPRESS_frontUrl: https://gc-front-ingsw3-roy-qa-726155499113.southamerica-east1.run.app
           CYPRESS_apiUrl: https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app
