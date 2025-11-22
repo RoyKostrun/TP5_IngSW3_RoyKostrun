@@ -1,12 +1,10 @@
 name: Deploy Frontend to Production
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - ".github/workflows/frontend.yml"
+  workflow_run:
+    workflows: ["Deploy Backend to Production"]
+    types:
+      - completed
 
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
