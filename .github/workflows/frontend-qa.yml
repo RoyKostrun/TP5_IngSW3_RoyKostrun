@@ -7,7 +7,7 @@ on:
       - "frontend/**"
       - "backend/**"
       - ".github/workflows/frontend-qa.yml"
-      - ".github/workflows/backend-qa.yml"
+
   workflow_dispatch:
 
 env:
