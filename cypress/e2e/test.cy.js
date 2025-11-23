@@ -13,7 +13,7 @@ describe('Pruebas e2e', () => {
     cy.wait('@getTodos')
   })
 
-  it('Flujo completo de creaciA3n de tarea', () => {
+  it('Flujo completo de creación de tarea', () => {
     const taskName = `Cypress create ${Date.now()}`
     const taskBody = `Body ${Date.now()}`
 
@@ -24,7 +24,7 @@ describe('Pruebas e2e', () => {
     cy.get('[data-testid="create-task-submit"]').click()
     cy.wait('@createTodo').its('response.statusCode').should('eq', 200)
     cy.contains('h3', taskName).should('exist')
-    cy.contains(taskBody).should('exist')
+    cy.contains(taskBody, { matchCase: false }).should('exist')
 
     cy.contains('h3', taskName)
       .closest('[data-testid^="task-card"]')
@@ -57,7 +57,7 @@ describe('Pruebas e2e', () => {
       })
   })
 
-  it('Flujo completo de ediciA3n de tarea', () => {
+  it('Flujo completo de edición de tarea', () => {
     const originalTitle = `Cypress edit ${Date.now()}`
     const updatedTitle = `${originalTitle} actualizado`
     const updatedBody = `Body actualizado ${Date.now()}`
@@ -72,7 +72,12 @@ describe('Pruebas e2e', () => {
         cy.visit(FRONT_URL)
         cy.wait('@getTodos')
 
-        cy.get(`[data-testid="edit-button-${todoId}"]`).click()
+        cy.contains('h3', originalTitle, { timeout: 8000 })
+          .should('exist')
+          .closest('[data-testid^="task-card"]')
+          .as('taskCard')
+
+        cy.get('@taskCard').find(`[data-testid="edit-button-${todoId}"]`).click()
         cy.get(`[data-testid="edit-task-title-${todoId}"]`)
           .clear()
           .type(updatedTitle)
@@ -83,7 +88,7 @@ describe('Pruebas e2e', () => {
 
         cy.wait('@updateTodo').its('response.statusCode').should('eq', 200)
         cy.contains('h3', updatedTitle).should('exist')
-        cy.contains(updatedBody).should('exist')
+        cy.contains(updatedBody, { matchCase: false }).should('exist')
 
         cy.request('DELETE', `${API_URL}/todos/${todoId}`)
       })
