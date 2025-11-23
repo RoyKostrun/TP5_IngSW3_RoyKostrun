@@ -318,3 +318,4 @@ jobs:
         run: echo "Frontend and Backend QA checks (unit, coverage, Sonar, and Cypress E2E) completed."
 
 # cambios varios
+#cambios varios de nuevo

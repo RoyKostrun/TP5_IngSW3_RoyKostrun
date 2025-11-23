@@ -16,6 +16,8 @@ def _ensure_body_column():
 
 _ensure_body_column()
 
+
+# cambios varios de nuevo
 app = FastAPI()
 
 origins = ["*"]

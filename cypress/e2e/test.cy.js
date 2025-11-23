@@ -12,6 +12,7 @@ describe('Pruebas e2e', () => {
     cy.visit(FRONT_URL)
     cy.wait('@getTodos')
   })
+  // comentario algo
 
   it('Flujo completo de creación de tarea', () => {
     const taskName = `Cypress create ${Date.now()}`

@@ -13,6 +13,7 @@ env:
   IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
   ENVIRONMENT: production
 #cambios varios
+#cambios varios de nuevo
 jobs:
   deploy:
     
@@ -48,7 +49,7 @@ jobs:
         run: |
           docker push ${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.IMAGE_NAME }}:prod-latest
-          
+
       - name: Deploy to Cloud Run (Production)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
