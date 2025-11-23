@@ -28,8 +28,12 @@ export function useTodos() {
     try {
       const payload = { title, body: body ?? "" };
       const res = await api.post("/todos", payload);
-      setTodos((prev) => [...prev, { ...res.data, body: res.data.body ?? "" }]);
-      return res.data;
+      const saved = {
+        ...res.data,
+        body: res.data.body ?? payload.body ?? "",
+      };
+      setTodos((prev) => [...prev, saved]);
+      return saved;
     } catch (err) {
       console.error("Error adding todo:", err);
       return null;
@@ -41,7 +45,18 @@ export function useTodos() {
       const res = await api.put(`/todos/${id}`, updates);
       setTodos((prev) =>
         prev.map((todo) =>
-          todo.id === id ? { ...res.data, body: res.data.body ?? "" } : todo
+          todo.id === id
+            ? {
+                ...res.data,
+                title: res.data.title ?? updates.title ?? todo.title,
+                body: res.data.body ?? updates.body ?? todo.body ?? "",
+                completed:
+                  res.data.completed ??
+                  (typeof updates.completed === "boolean"
+                    ? updates.completed
+                    : todo.completed),
+              }
+            : todo
         )
       );
       return res.data;
