@@ -5,26 +5,49 @@ export function useTodos() {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-    const fetchTodos = async () => {
-        try {
-            const res = await api.get("/todos");
-            const data = Array.isArray(res.data) ? res.data : res.data.data;
-            setTodos(data || []);
-        } catch (err) {
-            console.error("Error fetching todos:", err);
-            setTodos([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const normalizeTodos = (data = []) =>
+    (data || []).map((todo) => ({
+      ...todo,
+      body: todo.body ?? "",
+    }));
 
-
-  const addTodo = async (title) => {
+  const fetchTodos = async () => {
     try {
-      const res = await api.post("/todos", { title });
-      setTodos((prev) => [...prev, res.data]);
+      const res = await api.get("/todos");
+      const data = Array.isArray(res.data) ? res.data : res.data.data;
+      setTodos(normalizeTodos(data));
+    } catch (err) {
+      console.error("Error fetching todos:", err);
+      setTodos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addTodo = async ({ title, body }) => {
+    try {
+      const payload = { title, body: body ?? "" };
+      const res = await api.post("/todos", payload);
+      setTodos((prev) => [...prev, { ...res.data, body: res.data.body ?? "" }]);
+      return res.data;
     } catch (err) {
       console.error("Error adding todo:", err);
+      return null;
+    }
+  };
+
+  const updateTodo = async (id, updates) => {
+    try {
+      const res = await api.put(`/todos/${id}`, updates);
+      setTodos((prev) =>
+        prev.map((todo) =>
+          todo.id === id ? { ...res.data, body: res.data.body ?? "" } : todo
+        )
+      );
+      return res.data;
+    } catch (err) {
+      console.error("Error updating todo:", err);
+      return null;
     }
   };
 
@@ -41,5 +64,5 @@ export function useTodos() {
     fetchTodos();
   }, []);
 
-  return { todos, loading, addTodo, deleteTodo };
+  return { todos, loading, addTodo, updateTodo, deleteTodo };
 }

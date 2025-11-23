@@ -39,9 +39,13 @@ sonar-project.properties
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-export DATABASE_URL=sqlite:///./local.db            # PowerShell: $env:DATABASE_URL='sqlite:///./local.db'
 uvicorn app.main:app --reload
 ```
+El backend carga variables con [python-dotenv](https://pypi.org/project/python-dotenv/):
+
+- `.env.dev` (por defecto) usa SQLite local (`DATABASE_URL=sqlite:///./backend/dev.db`).
+- `.env` representa producción (Cloud Run / Postgres) e incluye `APP_ENV=production`.
+- Si querés forzar otro archivo, exportá `ENV_FILE=/ruta/a/archivo`.
 
 ### Frontend
 ```bash
@@ -49,11 +53,23 @@ cd frontend
 npm install
 npm run dev
 ```
+El frontend usa variables de entorno de Vite:
+
+- `.env` → valores para build/producción (commitado con la URL de Cloud Run).
+- `.env.dev` → valores locales; `npm run dev` carga este archivo gracias al flag `--mode dev`.
+
+Actualiza `VITE_API_URL` en esos archivos si tu backend cambia de URL.
 
 ### Docker Compose
 ```bash
 docker compose up --build
 ```
+El stack toma las variables de `.env.dev` (modo desarrollo). Ahí configurás las credenciales del Postgres local
+a la vez que mantenés `DATABASE_URL=sqlite:///...` para ejecuciones fuera de Docker. El servicio `backend`
+sobre-escribe esa URL dentro del contenedor para apuntar al Postgres (`db`) y el `frontend` se construye con
+`VITE_API_URL=http://localhost:8000`, que es la dirección que tu navegador puede resolver cuando accede a
+`http://localhost:3000`. Si necesitás otro host/puerto, edita `VITE_API_URL` en `.env.dev` antes de levantar los
+contenedores.
 
 ## Cómo correr los tests
 

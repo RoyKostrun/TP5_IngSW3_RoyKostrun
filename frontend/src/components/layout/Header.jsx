@@ -28,12 +28,12 @@ const AddButton = styled.button`
   }
 `;
 
-export default function Header({ title, onAdd }) {
+export default function Header({ title, onAdd, addLabel = "Add Task" }) {
   return (
     <HeaderContainer>
       <Title>{title}</Title>
-      <AddButton onClick={onAdd}>
-        <PlusIcon size={16} /> Add Task
+      <AddButton type="button" onClick={onAdd}>
+        <PlusIcon size={16} /> {addLabel}
       </AddButton>
     </HeaderContainer>
   );
