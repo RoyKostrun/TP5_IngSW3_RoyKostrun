@@ -8,11 +8,10 @@ const API_URL =
 describe('Pruebas e2e', () => {
   beforeEach(() => {
     cy.intercept('GET', '**/todos').as('getTodos')
-    cy.wait(30000) // espera 30 segundos para asegurar que el entorno estA listo
+    cy.wait(30000) // espera 30 segundos para asegurar que el entorno esta listo
     cy.visit(FRONT_URL)
     cy.wait('@getTodos')
   })
-  // comentario algo
 
   it('Flujo completo de creación de tarea', () => {
     const taskName = `Cypress create ${Date.now()}`
@@ -23,18 +22,24 @@ describe('Pruebas e2e', () => {
     cy.get('[data-testid="create-task-title"]').type(taskName)
     cy.get('[data-testid="create-task-body"]').type(taskBody)
     cy.get('[data-testid="create-task-submit"]').click()
-    cy.wait('@createTodo').its('response.statusCode').should('eq', 200)
-    cy.contains('h3', taskName).should('exist')
-    cy.contains(taskBody, { matchCase: false }).should('exist')
 
-    cy.contains('h3', taskName)
-      .closest('[data-testid^="task-card"]')
-      .find('button[data-testid^="delete-button"]')
-      .click()
-    cy.contains(taskName).should('not.exist')
+    cy.wait('@createTodo').then(({ response }) => {
+      expect(response.statusCode).to.eq(200)
+      const { id } = response.body
+
+      cy.get(`[data-testid="task-card-${id}"]`, { timeout: 8000 })
+        .should('exist')
+        .within(() => {
+          cy.get('h3').should('contain', taskName)
+          cy.get(`[data-testid="task-body-${id}"]`).should('contain', taskBody)
+        })
+
+      cy.get(`[data-testid="delete-button-${id}"]`).click()
+      cy.get(`[data-testid="task-card-${id}"]`).should('not.exist')
+    })
   })
 
-  it('Flujo completo de eliminaciA3n de tarea', () => {
+  it('Flujo completo de eliminación de tarea', () => {
     const taskName = `Cypress delete ${Date.now()}`
 
     cy.request('POST', `${API_URL}/todos`, {
@@ -47,14 +52,13 @@ describe('Pruebas e2e', () => {
         cy.visit(FRONT_URL)
         cy.wait('@getTodos')
 
-        cy.contains('h3', taskName, { timeout: 8000 })
+        cy.get(`[data-testid="task-card-${todoId}"]`, { timeout: 8000 })
           .should('exist')
-          .closest('[data-testid^="task-card"]')
           .find(`[data-testid="delete-button-${todoId}"]`)
           .click()
 
         cy.wait('@deleteTodo').its('response.statusCode').should('eq', 200)
-        cy.contains(taskName).should('not.exist')
+        cy.get(`[data-testid="task-card-${todoId}"]`).should('not.exist')
       })
   })
 
@@ -73,9 +77,8 @@ describe('Pruebas e2e', () => {
         cy.visit(FRONT_URL)
         cy.wait('@getTodos')
 
-        cy.contains('h3', originalTitle, { timeout: 8000 })
+        cy.get(`[data-testid="task-card-${todoId}"]`, { timeout: 8000 })
           .should('exist')
-          .closest('[data-testid^="task-card"]')
           .as('taskCard')
 
         cy.get('@taskCard').find(`[data-testid="edit-button-${todoId}"]`).click()
@@ -88,8 +91,13 @@ describe('Pruebas e2e', () => {
         cy.get(`[data-testid="edit-task-save-${todoId}"]`).click()
 
         cy.wait('@updateTodo').its('response.statusCode').should('eq', 200)
-        cy.contains('h3', updatedTitle).should('exist')
-        cy.contains(updatedBody, { matchCase: false }).should('exist')
+        cy.get(`[data-testid="task-card-${todoId}"]`).within(() => {
+          cy.get('h3').should('contain', updatedTitle)
+          cy.get(`[data-testid="task-body-${todoId}"]`).should(
+            'contain',
+            updatedBody,
+          )
+        })
 
         cy.request('DELETE', `${API_URL}/todos/${todoId}`)
       })
