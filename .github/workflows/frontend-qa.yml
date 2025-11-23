@@ -181,12 +181,8 @@ jobs:
         run: gcloud auth configure-docker gcr.io
 
       - name: Build Docker Image
-        env:
-          QA_BACKEND_URL: https://gc-back-ingsw3-roy-qa-726155499113.southamerica-east1.run.app
         run: |
-          docker build \
-            --build-arg VITE_API_URL=${QA_BACKEND_URL} \
-            -t ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ./frontend
+          docker build -t ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ./frontend
           docker tag ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ${{ env.FRONT_IMAGE_NAME }}:qa-latest
 
       - name: Push Docker Image to GCR
@@ -311,7 +307,7 @@ jobs:
           command: npx cypress run
         env:
           CYPRESS_frontUrl: https://gc-front-ingsw3-roy-qa-726155499113.southamerica-east1.run.app
-          CYPRESS_apiUrl: https://gc-back-ingsw3-roy-qa-726155499113.southamerica-east1.run.app
+          CYPRESS_apiUrl: https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app
 
   quality-gate:
     name: Quality Gate (QA)
