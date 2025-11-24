@@ -1,6 +1,6 @@
 FROM node:20 as build
 
-ARG VITE_API_URL=https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app
+ARG VITE_API_URL=http://localhost:8000
 ENV VITE_API_URL=$VITE_API_URL
 
 WORKDIR /app
