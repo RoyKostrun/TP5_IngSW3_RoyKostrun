@@ -3,7 +3,7 @@ const FRONT_URL =
   'https://gc-front-ingsw3-roy-qa-726155499113.southamerica-east1.run.app'
 const API_URL =
   Cypress.env('apiUrl') ||
-  'https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app'
+  'https://gc-back-ingsw3-roy-qa-726155499113.southamerica-east1.run.app'
 
 describe('Pruebas e2e', () => {
   beforeEach(() => {
