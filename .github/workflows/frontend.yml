@@ -13,25 +13,32 @@ env:
   IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
   ENVIRONMENT: production
 #cambios varios
+#cambios varios de nuevo
 jobs:
   deploy:
+    
     name: Deploy Frontend to Production
     runs-on: ubuntu-latest
     environment:
       name: production-frontend
       url: ${{ steps.deploy.outputs.url }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Google Auth
         id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
+
       - name: Pull QA image and retag for production
         run: |
           docker pull ${{ env.IMAGE_NAME }}:qa-latest
@@ -42,6 +49,7 @@ jobs:
         run: |
           docker push ${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.IMAGE_NAME }}:prod-latest
+
       - name: Deploy to Cloud Run (Production)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2

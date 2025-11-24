@@ -1,8 +1,10 @@
 import axios from "axios";
 
+const baseURL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export const api = axios.create({
-  // Para local, cambiar baseURL:"/"
-  baseURL: "https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app/",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

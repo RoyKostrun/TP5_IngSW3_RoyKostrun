@@ -3,7 +3,8 @@ services:
     image: postgres:16
     container_name: todo-db
     restart: always
-    env_file: .env
+    env_file:
+      - .env.dev
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
@@ -13,14 +14,21 @@ services:
     build: ./backend
     container_name: todo-backend
     restart: always
-    env_file: .env
+    env_file:
+      - .env.dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      BACK_URL: http://backend:8000
     depends_on:
       - db
     ports:
       - "8000:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: todo-frontend
     depends_on:
       - backend
