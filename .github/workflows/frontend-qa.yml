@@ -296,9 +296,6 @@ jobs:
     needs:
       - frontend-deploy
       - backend-deploy
-    env:
-      CYPRESS_frontUrl: ${{ needs.frontend-deploy.outputs.front_url }}
-      CYPRESS_apiUrl: ${{ needs.backend-deploy.outputs.back_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -319,8 +316,8 @@ jobs:
         with:
           command: npx cypress run
         env:
-          CYPRESS_frontUrl: https://gc-front-ingsw3-roy-qa-726155499113.southamerica-east1.run.app
-          CYPRESS_apiUrl: https://gc-back-ingsw3-roy-726155499113.southamerica-east1.run.app
+          CYPRESS_frontUrl: ${{ needs.frontend-deploy.outputs.front_url }}
+          CYPRESS_apiUrl: ${{ needs.backend-deploy.outputs.back_url }}
 
   quality-gate:
     name: Quality Gate (QA)
