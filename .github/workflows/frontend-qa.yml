@@ -154,7 +154,7 @@ jobs:
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
         with:
           args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.projectKey=${{ secrets.SONAR\_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORG }}
 
   frontend-deploy:
@@ -285,7 +285,9 @@ jobs:
     needs:
       - frontend-deploy
       - backend-deploy
-      
+    env:
+      CYPRESS_frontUrl: ${{ needs.frontend-deploy.outputs.front_url }}
+      CYPRESS_apiUrl: ${{ needs.backend-deploy.outputs.back_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
