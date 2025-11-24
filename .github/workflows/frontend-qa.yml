@@ -253,7 +253,7 @@ jobs:
         env:
           BACKEND_URL: ${{ needs.backend-deploy.outputs.back_url }}
         run: |
-          docker build --build-arg VITE_API_URL=${BACKEND_URL} -t ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ./frontend
+          docker build -t ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ./frontend
           docker tag ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ${{ env.FRONT_IMAGE_NAME }}:qa-latest
 
       - name: Push Docker Image to GCR
