@@ -228,6 +228,8 @@ jobs:
     needs:
       - frontend-tests
       - backend-deploy
+    outputs:
+      front_url: ${{ steps.deploy.outputs.url }}
     environment:
       name: qa-frontend
       url: ${{ steps.deploy.outputs.url }}
