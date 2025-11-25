@@ -62,7 +62,7 @@ const baseButton = css`
 
 export const PrimaryButton = styled.button`
   ${baseButton}
-  background-color: ${({ theme }) => theme.colors.primary};
+  background-color: red;
   color: white;
 
   &:disabled {
