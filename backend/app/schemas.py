@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 class TodoBase(BaseModel):
-    title: str
+    #title: str
     body: str
     completed: bool = False
 
