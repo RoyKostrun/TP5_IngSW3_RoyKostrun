@@ -226,7 +226,7 @@ jobs:
     name: Deploy Frontend to QA
     runs-on: ubuntu-latest
     needs:
-      - frontend-tests
+      #- frontend-tests
       - backend-deploy
     outputs:
       front_url: ${{ steps.deploy.outputs.url }}

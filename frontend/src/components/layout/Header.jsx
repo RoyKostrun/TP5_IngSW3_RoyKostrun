@@ -12,9 +12,11 @@ const HeaderContainer = styled.div`
 const Title = styled.h1`
   font-size: 1.5rem;
 `;
-
+/*
+background-color: #22c55e;
+*/
 const AddButton = styled.button`
-  background-color: ${({ theme }) => theme.colors.primary};
+  background-color: #22c55e;
   color: white;
   display: flex;
   align-items: center;
