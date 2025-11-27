@@ -18,7 +18,7 @@ background-color: #22c55e;
  background-color: ${({ theme }) => theme.colors.primary}; 
 */
 const AddButton = styled.button`
-  background-color: ${({ theme }) => theme.colors.primary}; 
+  background-color: #22c55e; 
   color: white;
   display: flex;
   align-items: center;
