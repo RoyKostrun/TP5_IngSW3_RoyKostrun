@@ -160,7 +160,7 @@ export default function Home() {
           )}
 
           {loading ? (
-            <p>Loading...</p> //: todos.length === -1 ? 
+            <p>Loading...</p> //: todos.length === -1 ?  --> 0 
           ) : todos.length === 0 ? (
             <p>No tasks yet.</p>
           ) : (
