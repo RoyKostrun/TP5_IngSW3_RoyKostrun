@@ -1,0 +1,468 @@
+name: Deploy Frontend and Backend to QA
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/frontend-qa.yml"
+
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: tps-ingsw3-roykostrun
+  REGION: southamerica-east1
+  FRONT_SERVICE_NAME: gc-front-ingsw3-roy-qa
+  BACK_SERVICE_NAME: gc-back-ingsw3-roy-qa
+  FRONT_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
+  BACK_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  ENVIRONMENT: qa
+
+  FRONT_PROD_SERVICE_NAME: gc-front-ingsw3-roy
+  FRONT_PROD_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
+  FRONT_PROD_ENVIRONMENT: production
+
+  BACK_PROD_SERVICE_NAME: gc-back-ingsw3-roy
+  BACK_PROD_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  ENVIORMENT: production
+jobs:
+  frontend-tests:
+    name: Run Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: frontend
+        env:
+          CI: true
+        run: npm run test:unit
+
+      - name: Generate coverage report
+        working-directory: frontend
+        env:
+          CI: true
+        run: npm run test:coverage
+
+      - name: Append coverage summary
+        working-directory: frontend
+        run: |
+          node -e 'const fs = require("fs"); const summary = JSON.parse(fs.readFileSync("./coverage/coverage-summary.json","utf8")); const t = summary.total; const line = `Lines: ${t.lines.pct}% | Statements: ${t.statements.pct}% | Functions: ${t.functions.pct}% | Branches: ${t.branches.pct}%`; fs.writeFileSync("./coverage-summary.txt", line);'
+          echo "## Frontend Coverage (QA)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat coverage-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-qa
+          path: frontend/coverage/lcov.info
+  
+  backend-tests:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./test.db
+        run: pytest -q
+
+      - name: Generate coverage report
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./test.db
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=70
+          echo "## Backend Coverage (QA)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          coverage report >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-qa
+          path: backend/coverage.xml
+
+  sonar:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-tests
+      - backend-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Generate backend coverage for Sonar
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./test.db
+        run: pytest --cov=app --cov-report=xml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Generate frontend coverage for Sonar
+        working-directory: frontend
+        env:
+          CI: true
+        run: npm run test:coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+
+  backend-deploy:
+    name: Deploy Backend to QA
+    runs-on: ubuntu-latest
+    needs:
+      - backend-tests
+      - sonar
+    outputs:
+      back_url: ${{ steps.deploy.outputs.url }}
+    environment:
+      name: qa-backend
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ env.BACK_IMAGE_NAME }}:qa-${{ github.sha }} ./backend
+          docker tag ${{ env.BACK_IMAGE_NAME }}:qa-${{ github.sha }} ${{ env.BACK_IMAGE_NAME }}:qa-latest
+
+      - name: Push Docker Image to GCR
+        run: |
+          docker push ${{ env.BACK_IMAGE_NAME }}:qa-${{ github.sha }}
+          docker push ${{ env.BACK_IMAGE_NAME }}:qa-latest
+
+      - name: Deploy to Cloud Run (QA)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.BACK_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.BACK_IMAGE_NAME }}:qa-${{ github.sha }}
+          flags: '--allow-unauthenticated --platform=managed'
+          env_vars: |
+            ENVIRONMENT=qa
+            NODE_ENV=production
+
+      - name: Show QA Deployment URL
+        run: |
+          echo "Backend deployed to QA environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+
+      - name: Create deployment summary
+        run: |
+          echo "## Backend QA Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** QA" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.BACK_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.BACK_IMAGE_NAME }}:qa-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+
+  frontend-deploy:
+    name: Deploy Frontend to QA
+    runs-on: ubuntu-latest
+    needs:
+      #- frontend-tests
+      - backend-deploy
+    outputs:
+      front_url: ${{ steps.deploy.outputs.url }}
+    environment:
+      name: qa-frontend
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Build Docker Image
+        env:
+          BACKEND_URL: ${{ needs.backend-deploy.outputs.back_url }}
+        run: |
+          docker build -t ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ./frontend
+          docker tag ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }} ${{ env.FRONT_IMAGE_NAME }}:qa-latest
+
+      - name: Push Docker Image to GCR
+        run: |
+          docker push ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }}
+          docker push ${{ env.FRONT_IMAGE_NAME }}:qa-latest
+
+      - name: Deploy to Cloud Run (QA)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.FRONT_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }}
+          flags: '--allow-unauthenticated --platform=managed'
+          env_vars: |
+            ENVIRONMENT=qa
+            NODE_ENV=production
+
+      - name: Show QA Deployment URL
+        run: |
+          echo "Frontend deployed to QA environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+
+      - name: Create deployment summary
+        run: |
+          echo "## Frontend QA Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** QA" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.FRONT_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+  cypress-e2e:
+    name: Cypress E2E (QA)
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-deploy
+      - backend-deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      #- name: Install Cypress dependencies (root)
+      # run: npm ci   
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          command: npx cypress run
+        env:
+          CYPRESS_frontUrl: ${{ needs.frontend-deploy.outputs.front_url }}
+          CYPRESS_apiUrl: ${{ needs.backend-deploy.outputs.back_url }}
+  quality-gate:
+    name: Quality Gate (QA)
+    runs-on: ubuntu-latest
+    needs: cypress-e2e
+    steps:
+      - name: Confirm gates passed
+        run: echo "Frontend and Backend QA checks (unit, coverage, Sonar, and Cypress E2E) completed."
+
+
+
+
+
+
+
+
+  back_prod_deploy:
+    name: Deploy Backend to Production
+    runs-on: ubuntu-latest
+    needs:
+      - quality-gate
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+      - name: Pull QA image and retag for production
+        run: |
+          docker pull ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest ${{ env.BACK_PROD_IMAGE_NAME }}:latest
+          docker tag ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+      - name: Push production tags to GCR
+        run: |
+          docker push ${{ env.BACK_PROD_IMAGE_NAME }}:latest
+          docker push ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+      - name: Deploy to Cloud Run (Production)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.BACK_PROD_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+          flags: "--allow-unauthenticated --platform=managed"
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
+      - name: Show Production Deployment URL
+        run: |
+          echo "Backend deployed to PRODUCTION environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Monitor logs y metricas!"
+      - name: Create deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.BACK_PROD_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.BACK_PROD_IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check application health" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor error logs" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify critical functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor performance metrics" >> $GITHUB_STEP_SUMMARY
+      - name: Notify deployment
+        run: |
+          echo "Deployment to production completed successfully!"
+          echo "Recorda monitorear el servicio."
+
+  front_prod_deploy:
+    name: Deploy Frontend to Production
+    runs-on: ubuntu-latest
+    needs:
+      - quality-gate
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Pull QA image and retag for production
+        run: |
+          docker pull ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest ${{ env.FRONT_PROD_IMAGE_NAME }}:latest
+          docker tag ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+
+      - name: Push production tags to GCR
+        run: |
+          docker push ${{ env.FRONT_PROD_IMAGE_NAME }}:latest
+          docker push ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+
+      - name: Deploy to Cloud Run (Production)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.FRONT_PROD_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+          flags: "--allow-unauthenticated --platform=managed"
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
+      - name: Show Production Deployment URL
+        run: |
+          echo "Frontend deployed to PRODUCTION environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Monitor logs and metrics closely!"
+      - name: Create deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.FRONT_PROD_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+
+
