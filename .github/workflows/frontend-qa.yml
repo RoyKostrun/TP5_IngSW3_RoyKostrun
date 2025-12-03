@@ -2,7 +2,7 @@ name: Deploy Frontend and Backend to QA
 
 on:
   push:
-    branches: ["qa"]
+    branches: ["main"]
     paths:
       - "frontend/**"
       - "backend/**"
@@ -18,6 +18,10 @@ env:
   FRONT_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
   BACK_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
   ENVIRONMENT: qa
+
+  FRONT_PROD_SERVICE_NAME: gc-front-ingsw3-roy
+  FRONT_PROD_IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-front-ingsw3-roy
+  FRONT_PROD_ENVIRONMENT: production
 
 jobs:
   frontend-tests:
@@ -287,9 +291,6 @@ jobs:
           echo "- **Image:** ${{ env.FRONT_IMAGE_NAME }}:qa-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-
-
-
   cypress-e2e:
     name: Cypress E2E (QA)
     runs-on: ubuntu-latest
@@ -318,7 +319,6 @@ jobs:
         env:
           CYPRESS_frontUrl: ${{ needs.frontend-deploy.outputs.front_url }}
           CYPRESS_apiUrl: ${{ needs.backend-deploy.outputs.back_url }}
-
   quality-gate:
     name: Quality Gate (QA)
     runs-on: ubuntu-latest
@@ -327,5 +327,135 @@ jobs:
       - name: Confirm gates passed
         run: echo "Frontend and Backend QA checks (unit, coverage, Sonar, and Cypress E2E) completed."
 
-# cambios varios
-#cambios varios de nuevo
+
+
+
+
+
+
+
+  back_prod_deploy:
+    name: Deploy Backend to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+      - name: Pull QA image and retag for production
+        run: |
+          docker pull ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest ${{ env.BACK_PROD_IMAGE_NAME }}:latest
+          docker tag ${{ env.BACK_PROD_IMAGE_NAME }}:qa-latest ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+      - name: Push production tags to GCR
+        run: |
+          docker push ${{ env.BACK_PROD_IMAGE_NAME }}:latest
+          docker push ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+      - name: Deploy to Cloud Run (Production)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.BACK_PROD_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.BACK_PROD_IMAGE_NAME }}:prod-latest
+          flags: "--allow-unauthenticated --platform=managed"
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
+      - name: Show Production Deployment URL
+        run: |
+          echo "Backend deployed to PRODUCTION environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Monitor logs y metricas!"
+      - name: Create deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.BACK_PROD_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.BACK_PROD_IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check application health" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor error logs" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify critical functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor performance metrics" >> $GITHUB_STEP_SUMMARY
+      - name: Notify deployment
+        run: |
+          echo "Deployment to production completed successfully!"
+          echo "Recorda monitorear el servicio."
+
+  front_prod_deploy:
+    name: Deploy Frontend to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Pull QA image and retag for production
+        run: |
+          docker pull ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest ${{ env.FRONT_PROD_IMAGE_NAME }}:latest
+          docker tag ${{ env.FRONT_PROD_IMAGE_NAME }}:qa-latest ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+
+      - name: Push production tags to GCR
+        run: |
+          docker push ${{ env.FRONT_PROD_IMAGE_NAME }}:latest
+          docker push ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+
+      - name: Deploy to Cloud Run (Production)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.FRONT_PROD_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-latest
+          flags: "--allow-unauthenticated --platform=managed"
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
+      - name: Show Production Deployment URL
+        run: |
+          echo "Frontend deployed to PRODUCTION environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Monitor logs and metrics closely!"
+      - name: Create deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.FRONT_PROD_SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.FRONT_PROD_IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+
+
