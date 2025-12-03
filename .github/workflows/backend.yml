@@ -1,0 +1,83 @@
+name: Deploy Backend to Production
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/backend.yml"
+
+env:
+  PROJECT_ID: tps-ingsw3-roykostrun
+  REGION: southamerica-east1
+  SERVICE_NAME: gc-back-ingsw3-roy
+  IMAGE_NAME: gcr.io/tps-ingsw3-roykostrun/gc-back-ingsw3-roy
+  ENVIRONMENT: production
+#cambios varios 
+#cambios varios de nuevo
+#cambios varios de nuevo de vuelta
+
+jobs:
+  deploy:
+    name: Deploy Backend to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production-backend
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+      - name: Pull QA image and retag for production
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:qa-latest
+          docker tag ${{ env.IMAGE_NAME }}:qa-latest ${{ env.IMAGE_NAME }}:latest
+          docker tag ${{ env.IMAGE_NAME }}:qa-latest ${{ env.IMAGE_NAME }}:prod-latest
+      - name: Push production tags to GCR
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.IMAGE_NAME }}:prod-latest
+      - name: Deploy to Cloud Run (Production)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}:prod-latest
+          flags: "--allow-unauthenticated --platform=managed"
+          env_vars: |
+            ENVIRONMENT=production
+            NODE_ENV=production
+      - name: Show Production Deployment URL
+        run: |
+          echo "Backend deployed to PRODUCTION environment"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Monitor logs y metricas!"
+      - name: Create deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service:** ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.IMAGE_NAME }}:prod-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check application health" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor error logs" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify critical functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor performance metrics" >> $GITHUB_STEP_SUMMARY
+      - name: Notify deployment
+        run: |
+          echo "Deployment to production completed successfully!"
+          echo "Recorda monitorear el servicio."

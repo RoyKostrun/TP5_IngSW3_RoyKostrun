@@ -12,9 +12,13 @@ const HeaderContainer = styled.div`
 const Title = styled.h1`
   font-size: 1.5rem;
 `;
+/*
+background-color: #22c55e;
 
+ background-color: ${({ theme }) => theme.colors.primary}; 
+*/
 const AddButton = styled.button`
-  background-color: ${({ theme }) => theme.colors.primary};
+  background-color: #22c55e; 
   color: white;
   display: flex;
   align-items: center;
@@ -28,12 +32,12 @@ const AddButton = styled.button`
   }
 `;
 
-export default function Header({ title, onAdd }) {
+export default function Header({ title, onAdd, addLabel = "Add Task" }) {
   return (
     <HeaderContainer>
       <Title>{title}</Title>
-      <AddButton onClick={onAdd}>
-        <PlusIcon size={16} /> Add Task
+      <AddButton type="button" onClick={onAdd}>
+        <PlusIcon size={16} /> {addLabel}
       </AddButton>
     </HeaderContainer>
   );
