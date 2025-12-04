@@ -161,7 +161,7 @@ export default function Home() {
 
           {loading ? (
             <p>Loading...</p> //: todos.length === -1 ?  --> 0 
-          ) : todos.length === 0 ? (
+          ) : todos.length === -1 ? (
             <p>No tasks yet.</p>
           ) : (
             todos.map((t) => {
