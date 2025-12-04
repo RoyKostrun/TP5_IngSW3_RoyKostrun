@@ -174,7 +174,7 @@ jobs:
       back_url: ${{ steps.deploy.outputs.url }}
     environment:
       name: qa-backend
-      url: ${{ steps.deploy.outputs.url }}
+      #url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -238,7 +238,7 @@ jobs:
       front_url: ${{ steps.deploy.outputs.url }}
     environment:
       name: qa-frontend
-      url: ${{ steps.deploy.outputs.url }}
+      #url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -344,7 +344,7 @@ jobs:
       - cypress-e2e
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
+      #url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -409,7 +409,7 @@ jobs:
       - cypress-e2e
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
+      #url: ${{ steps.deploy.outputs.url }}
 
     steps:
       - name: Checkout code
