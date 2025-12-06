@@ -1,4 +1,4 @@
-name: Deploy Frontend and Backend to QA
+name: Test and Deploy
 
 on:
   push:

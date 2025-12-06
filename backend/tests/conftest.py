@@ -11,8 +11,9 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-# Force a lightweight SQLite database for tests before importing the app modules.
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+# forzamos que, si no existe, la URL apunte a sqlite:///./test.db
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db") # usamos el sqlite para que cada test apunte a un archivo test.deb local que se recrea desde cero sin depender de la base real
 
 from app.database import Base  # noqa: E402
 from app.main import app, get_db  # noqa: E402
@@ -25,9 +26,9 @@ TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=Fals
 
 @pytest.fixture()
 def db_session():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    session = TestingSessionLocal()
+    Base.metadata.drop_all(bind=engine) # borra todas las tablas del archivo SQLite.
+    Base.metadata.create_all(bind=engine) # las vuelvo a crear
+    session = TestingSessionLocal() # entrego al test
     try:
         yield session
     finally:
@@ -35,18 +36,18 @@ def db_session():
 
 
 @pytest.fixture(autouse=True)
-def override_get_db(db_session):
-    def _get_db():
+def override_get_db(db_session): # reemplaza la dependencia get_db de FastAPI dentro de los tests 
+    def _get_db():# para terornar siempre esa sesion
         try:
             yield db_session
         finally:
             pass
 
-    app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_db] = _get_db # obligamos que  todos los endpoints usen la sesión de prueba
     yield
     app.dependency_overrides.clear()
 
-
+# de esta forma cada request en los tests usa la misma base temporal, sin tocar la base real
 @pytest.fixture()
 def client():
     return TestClient(app)
