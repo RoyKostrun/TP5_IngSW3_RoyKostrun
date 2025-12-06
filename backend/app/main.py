@@ -66,3 +66,13 @@ def health_check():
             "version": "v0.0.5"
         }
     )
+
+@app.get("/", tags=["Estatus"])
+def status():
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": 200,
+            "message": "Server is up!",
+        }
+    )
