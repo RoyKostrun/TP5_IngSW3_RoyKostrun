@@ -112,7 +112,7 @@ jobs:
           path: backend/coverage.xml
 
   sonar:
-    name: SonarCloud Analysis
+    name: SonarCloud  Static Code Analysis
     runs-on: ubuntu-latest
     needs:
       - frontend-tests
