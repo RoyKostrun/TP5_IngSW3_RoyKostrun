@@ -6,7 +6,7 @@ on:
     paths:
       - "frontend/**"
       - "backend/**"
-      - ".github/workflows/frontend-qa.yml"
+      - ".github/workflows/frontend.yml"
 
   workflow_dispatch:
 
