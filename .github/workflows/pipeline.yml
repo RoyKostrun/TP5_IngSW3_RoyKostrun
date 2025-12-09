@@ -6,10 +6,10 @@ on:
     paths:
       - "frontend/**"
       - "backend/**"
-      - ".github/workflows/frontend.yml"
+      - ".github/workflows/pipeline.yml"
 
   workflow_dispatch:
-#cambios varios
+#cambios varios varios
 env:
   PROJECT_ID: tps-ingsw3-roykostrun
   REGION: southamerica-east1
